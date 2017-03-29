@@ -40,142 +40,139 @@
 </head>
 <body>
   <script>
+  
+  var svg = d3.select('body').append('svg');
 
-    var svg = d3.select('body').append('svg');
+  var tooltip = d3.select('body').append('div').attr('class', 'tooltip');
 
-    var tooltip = d3.select('body').append('div')
-      .attr('class', 'tooltip');
+  var svgWidth = Math.min(960, window.innerWidth) || 960;
+  var svgHeight = svgWidth * (500 / 960);
 
-    var svgWidth = Math.min(960, window.innerWidth) || 960;
-    var svgHeight = svgWidth * (500 / 960);
+  var tooltipDate = tooltip.append('div');
+  var tooltipVariance = tooltip.append('div');
 
-    var tooltipDate = tooltip.append('div');
-    var tooltipVariance = tooltip.append('div');
+  var margin = { top: 60, right: 90, bottom: 40, left: 60 };
+  var width = svgWidth - margin.left - margin.right;
+  var height = svgHeight - margin.top - margin.bottom;
 
-    svg.attr('width', svgWidth)
-      .attr('height', svgHeight);
+  var x = d3.scaleTime().range([0, width]);
+  var y = d3.scaleTime().range([0, height]);
+  var z = d3.scaleLinear().range([0, 1]); // color scale
+  var l = d3.scaleLinear().domain([0, 11]); // legend scale
 
-    var margin = { top: 60, right: 90, bottom: 40, left: 60 };
-    var width = svgWidth - margin.left - margin.right;
-    var height = svgHeight - margin.top - margin.bottom;
+  var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
 
-    var x = d3.scaleTime().range([0, width]);
-    var y = d3.scaleTime().range([0, height]);
-    var z = d3.scaleLinear().range([0, 1]); // color scale
-    var l = d3.scaleLinear().domain([0, 11]); // legend scale
+  var parseMonth = d3.timeParse('%m');
+  var parseYear = d3.timeParse('%Y');
 
-    var g = svg.append('g')
-      .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+  svg.attr('width', svgWidth).attr('height', svgHeight);
 
-    var parseMonth = d3.timeParse('%m');
-    var parseYear = d3.timeParse('%Y');
+  d3.json('global-temperature.json', function (err, res) {
+    if (err) throw err;
 
-    d3.json('global-temperature.json', function(err, res) {
-      if (err) throw err;
+    var data = res.monthlyVariance;
+    var rectWidth;
+    var rectHeight;
+    var squareSide; // size of legend swatches
+    var legend;
 
-      var data = res.monthlyVariance;
-      var rectWidth;
-      var rectHeight;
-      var squareSide; // size of legend swatches
-      var legend;
+    // transform date strings into date objects
 
-      // transform date strings into date objects
-
-      data.forEach(function(d) {
-        d.year = parseYear(String(d.year));
-        d.month = parseMonth(String(d.month));
-      });
-
-      // define domains and ranges
-
-      x.domain(d3.extent(data, function(d) { return d.year; }));
-      y.domain(d3.extent(data, function(d) { return d.month; }));
-      z.domain(d3.extent(data, function(d) { return d.variance; }));
-      l.range(z.domain());
-
-      // draw axes
-
-      g.append('g')
-       .attr('class', 'x axis')
-       .attr('transform', 'translate(0,' + height + ')')
-       .call(d3.axisBottom(x));
-
-      g.append('g')
-       .attr('class', 'axis')
-       .attr('transform', 'translate(0,-' + svgHeight / 24 + ')')
-       .call(d3.axisLeft(y).ticks(10).tickFormat(d3.timeFormat('%B')))
-       .append('text')
-       .attr('transform', 'rotate(-90)')
-       .attr('y', 6)
-       .attr('dy', '0.71em')
-       .attr('text-anchor', 'end');
-
-      // draw rectangles
-
-      rectWidth = width / (x.domain()[1].getFullYear() - x.domain()[0].getFullYear());
-      rectHeight = svgHeight / 12;
-
-      g.selectAll('.tile')
-       .data(data)
-       .enter()
-       .append('rect')
-       .attr('class', 'tile')
-       .attr('x', function(d) { return x(d.year); })
-       .attr('y', function(d) { return y(d.month) - rectHeight; })
-       .attr('width', rectWidth)
-       .attr('height',  rectHeight)
-       .style('fill', function(d) { return d3.interpolateSpectral(1 - z(d.variance)); })
-       .on('mouseover', function(d) {
-         tooltip.style('top', Number(this.getAttribute('y')) + rectHeight + 'px')
-                .style('left', Number(this.getAttribute('x')) + margin.left + 'px')
-                .style('display', 'inline');
-
-         tooltipDate.text(d3.timeFormat('%B')(d.month) + ', ' + d3.timeFormat('%Y')(d.year));
-         tooltipVariance.text(d.variance + ' °C')
-       }).on('mouseout', function(d) {
-         tooltip.style('display', 'none');
-       });
-
-      // label x axis: y is obviously Months
-
-      g.append('text')
-       .attr('class', 'label')
-       .attr('text-anchor', 'middle')
-       .attr('x', width / 2)
-       .attr('y', height + margin.bottom)
-       .text('Year');
-
-      // legend
-
-      squareSide = rectHeight / 2;
-      legend = g.selectAll('.legend')
-                .data(Array(12))
-                .enter()
-                .append('g')
-                .attr('class', 'legend')
-                .attr('transform', function(d, i) {
-                  return 'translate(' + (width + squareSide) + ',' + (squareSide + i * squareSide) + ')';
-                });
-
-      legend.append('rect')
-            .attr('width', squareSide)
-            .attr('height', squareSide)
-            .style('fill', function(d, i) { return d3.interpolateSpectral(1 - z(l(i))); });
-
-      legend.append('text')
-            .attr('x', squareSide + 6)
-            .attr('y', squareSide / 2)
-            .attr('dy', '.35em')
-            .text(function(d, i) { return Math.round(l(i) * 100 ) / 100; });
-
-      g.append('text')
-       .attr('class', 'label')
-       .attr('x', width + squareSide)
-       .attr('y', squareSide / 2)
-       .attr('dy', '.35em')
-       .text('Variance');
+    data.forEach(function (d) {
+      d.year = parseYear(String(d.year));
+      d.month = parseMonth(String(d.month));
     });
 
+    // define domains and ranges
+
+    x.domain(d3.extent(data, function (d) { return d.year; }));
+    y.domain(d3.extent(data, function (d) { return d.month; }));
+    z.domain(d3.extent(data, function (d) { return d.variance; }));
+    l.range(z.domain());
+
+    // draw axes
+
+    g.append('g')
+     .attr('class', 'x axis')
+     .attr('transform', 'translate(0,' + height + ')')
+     .call(d3.axisBottom(x));
+
+    g.append('g')
+     .attr('class', 'axis')
+     .attr('transform', 'translate(0,-' + (svgHeight / 24) + ')')
+     .call(d3.axisLeft(y).ticks(10).tickFormat(d3.timeFormat('%B')))
+     .append('text')
+     .attr('transform', 'rotate(-90)')
+     .attr('y', 6)
+     .attr('dy', '0.71em')
+     .attr('text-anchor', 'end');
+
+    // draw rectangles
+
+    rectWidth = width / (x.domain()[1].getFullYear() - x.domain()[0].getFullYear());
+    rectHeight = svgHeight / 12;
+
+    g.selectAll('.tile')
+     .data(data)
+     .enter()
+     .append('rect')
+     .attr('class', 'tile')
+     .attr('x', function (d) { return x(d.year); })
+     .attr('y', function (d) { return y(d.month) - rectHeight; })
+     .attr('width', rectWidth)
+     .attr('height', rectHeight)
+     .style('fill', function (d) { return d3.interpolateSpectral(1 - z(d.variance)); })
+     .on('mouseover', function (d) {
+       tooltip.style('top', Number(this.getAttribute('y')) + rectHeight + 'px')
+              .style('left', Number(this.getAttribute('x')) + margin.left + 'px')
+              .style('display', 'inline');
+
+       tooltipDate.text(d3.timeFormat('%B')(d.month) + ', ' + d3.timeFormat('%Y')(d.year));
+       tooltipVariance.text(d.variance + ' °C');
+     })
+     .on('mouseout', function () {
+       tooltip.style('display', 'none');
+     });
+
+    // label x axis: y is obviously Months
+
+    g.append('text')
+     .attr('class', 'label')
+     .attr('text-anchor', 'middle')
+     .attr('x', width / 2)
+     .attr('y', height + margin.bottom)
+     .text('Year');
+
+    // legend
+
+    squareSide = rectHeight / 2;
+    legend = g.selectAll('.legend')
+              .data(Array(12))
+              .enter()
+              .append('g')
+              .attr('class', 'legend')
+              .attr('transform', function (d, i) {
+                return 'translate(' + (width + squareSide) + ',' + ((squareSide + i) * squareSide) + ')';
+              });
+
+    legend.append('rect')
+          .attr('width', squareSide)
+          .attr('height', squareSide)
+          .style('fill', function (d, i) { return d3.interpolateSpectral(1 - z(l(i))); });
+
+    legend.append('text')
+          .attr('x', squareSide + 6)
+          .attr('y', squareSide / 2)
+          .attr('dy', '.35em')
+          .text(function (d, i) { return Math.round(l(i) * 100) / 100; });
+
+    g.append('text')
+     .attr('class', 'label')
+     .attr('x', width + squareSide)
+     .attr('y', squareSide / 2)
+     .attr('dy', '.35em')
+     .text('Variance');
+  });
   </script>
 </body>
 </html>
