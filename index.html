@@ -152,7 +152,7 @@
               .append('g')
               .attr('class', 'legend')
               .attr('transform', function (d, i) {
-                return 'translate(' + (width + squareSide) + ',' + ((squareSide + i) * squareSide) + ')';
+                return 'translate(' + (width + squareSide) + ',' + (squareSide + (i * squareSide)) + ')';
               });
 
     legend.append('rect')
