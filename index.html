@@ -40,7 +40,7 @@
 </head>
 <body>
   <script>
-  
+
   var svg = d3.select('body').append('svg');
 
   var tooltip = d3.select('body').append('div').attr('class', 'tooltip');
@@ -70,7 +70,7 @@
   d3.json('global-temperature.json', function (err, res) {
     if (err) throw err;
 
-    var data = res.monthlyVariance;
+    var monthlyVariances = res.monthlyVariance;
     var rectWidth;
     var rectHeight;
     var squareSide; // size of legend swatches
@@ -78,16 +78,16 @@
 
     // transform date strings into date objects
 
-    data.forEach(function (d) {
+    monthlyVariances.forEach(function (d) {
       d.year = parseYear(String(d.year));
       d.month = parseMonth(String(d.month));
     });
 
     // define domains and ranges
 
-    x.domain(d3.extent(data, function (d) { return d.year; }));
-    y.domain(d3.extent(data, function (d) { return d.month; }));
-    z.domain(d3.extent(data, function (d) { return d.variance; }));
+    x.domain(d3.extent(monthlyVariances, function (d) { return d.year; }));
+    y.domain(d3.extent(monthlyVariances, function (d) { return d.month; }));
+    z.domain(d3.extent(monthlyVariances, function (d) { return d.variance; }));
     l.range(z.domain());
 
     // draw axes
@@ -113,7 +113,7 @@
     rectHeight = svgHeight / 12;
 
     g.selectAll('.tile')
-     .data(data)
+     .data(monthlyVariances)
      .enter()
      .append('rect')
      .attr('class', 'tile')
